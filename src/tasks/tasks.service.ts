@@ -144,29 +144,20 @@ export class TasksService {
   }
 
   async remove(authUser: User, id: number): Promise<void> {
-    const task = await this.taskRepository.findOneOrFail(
-      { id },
-      {
-        populate: ['participants'],
-      },
-    );
+    const task = await this.taskRepository.findOneOrFail({ id });
 
-    if (!task.participants.find((u) => u.id === authUser.id)) {
-      throw new ForbiddenException('You are not a participant of this task');
-    }
-
-    task.participants.remove(authUser);
-
-    // If there are still participants, just remove the user from the task
-    if (task.participants.count() > 0) {
+    if (task.creator.id !== authUser.id) {
+      // Creador borra la tarea
+      if (task.filepath) {
+        await this.imageService.removeImage(task.filepath);
+      }
+      await this.taskRepository.getEntityManager().removeAndFlush(task);
+    } else {
+      await this.removeParticipant(authUser, task.id, authUser.id);
+      // Participante se desvincula
+      task.participants.remove(authUser);
       await this.taskRepository.getEntityManager().persistAndFlush(task);
-      return;
     }
-
-    if (task.filepath) {
-      await this.imageService.removeImage(task.filepath);
-    }
-    await this.taskRepository.getEntityManager().removeAndFlush(task);
   }
 
   async addSubtask(
@@ -253,7 +244,7 @@ export class TasksService {
       id: taskId,
     });
 
-    if (task.creator.id !== authUser.id) {
+    if (authUser.id !== userId && task.creator.id !== authUser.id) {
       throw new ForbiddenException('You are not the creator of this task');
     }
 

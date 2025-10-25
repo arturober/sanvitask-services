@@ -77,6 +77,7 @@ export class TasksController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(TaskCollaboratorGuard)
   async remove(@AuthUser() authUser: User, @Param('id') id: string) {
     await this.tasksService.remove(authUser, +id);
   }
