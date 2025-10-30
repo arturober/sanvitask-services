@@ -14,16 +14,16 @@ import {
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
-import { TasksService } from './tasks.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
-import { User } from 'src/users/entities/user.entity';
 import { AuthUser } from 'src/auth/decorators/user.decorator';
-import { AddSubtaskDto } from './dto/add-subtask.dto';
-import { UpdateSubtaskDto } from './dto/update-subtask.dto';
+import { User } from 'src/users/entities/user.entity';
 import { AddCommentDto } from './dto/add-comment.dto';
-import { TaskCollaboratorGuard } from './guards/task-collaborator/task-collaborator.guard';
+import { AddSubtaskDto } from './dto/add-subtask.dto';
+import { CompleteSubtaskDto } from './dto/complete-subtask.dto';
+import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskPostionStatusDto } from './dto/update-task-position-status.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { TaskCollaboratorGuard } from './guards/task-collaborator/task-collaborator.guard';
+import { TasksService } from './tasks.service';
 
 @Controller('tasks')
 export class TasksController {
@@ -97,24 +97,22 @@ export class TasksController {
   }
 
   @Delete('subtasks/:id')
-  @UseGuards(TaskCollaboratorGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeSubtask(@AuthUser() authUser: User, @Param('id') id: string) {
     await this.tasksService.removeSubtask(authUser, +id);
   }
 
   @Put('subtasks/:id')
-  @UseGuards(TaskCollaboratorGuard)
   async updateSubtask(
     @AuthUser() authUser: User,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
-    updateSubtaskDto: UpdateSubtaskDto,
+    updateSubtaskDto: CompleteSubtaskDto,
   ) {
     return {
       subtask: await this.tasksService.updateSubtask(
         authUser,
-        +id,
+        id,
         updateSubtaskDto,
       ),
     };

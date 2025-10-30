@@ -29,6 +29,8 @@ export class TaskCollaboratorGuard implements CanActivate {
       participants: user.id,
     });
 
+    console.log(taskId, user.id, isCollaborator);
+
     if (!isCollaborator) {
       throw new ForbiddenException('You are not a collaborator of this task');
     }

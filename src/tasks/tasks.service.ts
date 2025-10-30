@@ -1,22 +1,23 @@
-import { EntityRepository, raw, ref } from '@mikro-orm/core';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
+import { raw, ref } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { ImageService } from 'src/commons/image/image.service';
 import { User } from 'src/users/entities/user.entity';
+import { AddCommentDto } from './dto/add-comment.dto';
+import { AddSubtaskDto } from './dto/add-subtask.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateSubtaskDto } from './dto/update-subtask.dto';
+import { UpdateTaskPostionStatusDto } from './dto/update-task-position-status.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Subtask } from './entities/subtask';
 import { Task, TaskStatus } from './entities/task';
-import { AddSubtaskDto } from './dto/add-subtask.dto';
-import { AddCommentDto } from './dto/add-comment.dto';
 import { TaskComment } from './entities/task_comment';
-import { EntityManager } from '@mikro-orm/better-sqlite';
-import { UpdateTaskPostionStatusDto } from './dto/update-task-position-status.dto';
+import { CompleteSubtaskDto } from './dto/complete-subtask.dto';
 
 @Injectable()
 export class TasksService {
@@ -32,19 +33,32 @@ export class TasksService {
     private readonly imageService: ImageService,
   ) {}
 
-  async findAll(authUser: User): Promise<Task[]> {
-    return await this.taskRepository.findAll({
-      populate: ['subtasks', 'participants'],
-      where: { participants: authUser.id },
-      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
-    });
+  private getTaskQuery(authUser: User) {
+    const query = this.taskRepository.createQueryBuilder('task').select('*');
+    query.addSelect(raw(`${authUser.id} = task.creator_id as mine`));
+    return query;
   }
 
+  findAll(authUser: User): Promise<Task[]> {
+    return this.getTaskQuery(authUser)
+      .where({ participants: authUser.id })
+      .leftJoinAndSelect('task.subtasks', 'subtasks')
+      .leftJoinAndSelect('task.participants', 'participants')
+      .orderBy({ position: 'asc', createdAt: 'desc' })
+      .getResultList();
+  }
+
+  // TODO: Añadir el booleano indicando si el usuario logueado es el creador
   async findOne(authUser: User, id: number): Promise<Task> {
-    const task = await this.taskRepository.findOneOrFail(
-      { id },
-      { populate: ['subtasks', 'participants'] },
-    );
+    const task = await this.getTaskQuery(authUser)
+      .where({ id: id })
+      .leftJoinAndSelect('task.subtasks', 'subtasks')
+      .leftJoinAndSelect('task.participants', 'participants')
+      .getSingleResult();
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
 
     if (!task.participants.find((u) => u.id === authUser.id)) {
       throw new ForbiddenException('You are not a participant of this task');
@@ -83,12 +97,16 @@ export class TasksService {
   }
 
   async updateStatus(id: number, updateTaskDto: UpdateTaskPostionStatusDto) {
+    console.log(updateTaskDto);
     return this.taskRepository
       .getEntityManager()
       .transactional(async (em: EntityManager) => {
         const task = await em.findOneOrFail(Task, id);
 
-        if (updateTaskDto.status && updateTaskDto.status !== task.status) {
+        if (
+          updateTaskDto.status !== undefined &&
+          updateTaskDto.status !== task.status
+        ) {
           await em
             .createQueryBuilder(Task)
             .update({ position: raw('position - 1') })
@@ -146,7 +164,7 @@ export class TasksService {
   async remove(authUser: User, id: number): Promise<void> {
     const task = await this.taskRepository.findOneOrFail({ id });
 
-    if (task.creator.id !== authUser.id) {
+    if (task.creator.id === authUser.id) {
       // Creador borra la tarea
       if (task.filepath) {
         await this.imageService.removeImage(task.filepath);
@@ -154,9 +172,6 @@ export class TasksService {
       await this.taskRepository.getEntityManager().removeAndFlush(task);
     } else {
       await this.removeParticipant(authUser, task.id, authUser.id);
-      // Participante se desvincula
-      task.participants.remove(authUser);
-      await this.taskRepository.getEntityManager().persistAndFlush(task);
     }
   }
 
@@ -191,12 +206,19 @@ export class TasksService {
   async updateSubtask(
     authUser: User,
     id: number,
-    updateSubtaskDto: UpdateSubtaskDto,
+    updateSubtaskDto: CompleteSubtaskDto,
   ): Promise<Subtask> {
     const subtask = await this.subtaskRepository.findOneOrFail({ id });
+    const task = await this.taskRepository.findOneOrFail({
+      id: subtask.task.id,
+      participants: authUser.id,
+    });
 
-    subtask.description = updateSubtaskDto.description ?? subtask.description;
-    subtask.completed = updateSubtaskDto.completed ?? subtask.completed;
+    if (!task) {
+      throw new Error('You are not a participant of this task');
+    }
+
+    subtask.completed = updateSubtaskDto.completed;
 
     await this.subtaskRepository.getEntityManager().persistAndFlush(subtask);
     return subtask;
@@ -220,7 +242,7 @@ export class TasksService {
     });
 
     const userExists = await this.taskRepository.count({
-      id: userId,
+      id: taskId,
       participants: userId,
     });
 

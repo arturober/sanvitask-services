@@ -1,7 +1,7 @@
 import { IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 export class UpdateTaskPostionStatusDto {
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 0 })
   @IsOptional()
   @Min(0)
   @Max(2)
@@ -9,5 +9,6 @@ export class UpdateTaskPostionStatusDto {
 
   @IsNumber({ maxDecimalPlaces: 0 })
   @IsOptional()
+  @Min(1)
   position?: number;
 }

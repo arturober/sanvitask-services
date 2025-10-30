@@ -46,7 +46,7 @@ export class Task {
       const baseUrl =
         (process.env.BASE_URL || 'http://localhost:3000') +
         (process.env.BASE_PATH || '');
-      return `${baseUrl}/${p}`;
+      return p ? `${baseUrl}/${p}` : p;
     },
   })
   filepath?: string;
@@ -78,6 +78,9 @@ export class Task {
 
   @Property({ type: 'integer' })
   position!: number;
+
+  @Property({ persist: false })
+  mine?: boolean;
 
   @OneToMany(() => TaskComment, (comment) => comment.task)
   comments = new Collection<TaskComment>(this);
