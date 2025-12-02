@@ -1,4 +1,4 @@
-import { EntityManager } from '@mikro-orm/better-sqlite';
+import { EntityManager } from '@mikro-orm/sqlite';
 import {
   CanActivate,
   ExecutionContext,
