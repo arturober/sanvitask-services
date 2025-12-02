@@ -13,6 +13,6 @@ export class Subtask {
   @Property({ nullable: true, default: false })
   completed? = false;
 
-  @ManyToOne(() => Task, 'subtasks')
+  @ManyToOne(() => Task, { fieldName: 'task_id', deleteRule: 'cascade' })
   task!: Ref<Task>;
 }

@@ -16,7 +16,7 @@ export class TaskComment {
   @Property({ length: 200, nullable: false })
   comment!: string;
 
-  @ManyToOne(() => Task, 'comments')
+  @ManyToOne(() => Task, { fieldName: 'task_id', deleteRule: 'cascade' })
   task!: Ref<Task>;
 
   @ManyToOne(() => User)

@@ -33,7 +33,10 @@ export class Task {
   @Property({ nullable: true, default: TaskStatus.PENDING })
   status?: number = TaskStatus.PENDING;
 
-  @ManyToMany(() => User, (user) => user.tasks)
+  @ManyToMany(() => User, (user) => user.tasks, {
+    cascade: [Cascade.ALL],
+    deleteRule: 'cascade',
+  })
   participants = new Collection<User>(this);
 
   @ManyToOne(() => User, { nullable: true })
@@ -73,6 +76,7 @@ export class Task {
 
   @OneToMany(() => Subtask, (subtask) => subtask.task, {
     cascade: [Cascade.ALL],
+    orphanRemoval: true,
   })
   subtasks = new Collection<Subtask>(this);
 
@@ -82,6 +86,9 @@ export class Task {
   @Property({ persist: false })
   mine?: boolean;
 
-  @OneToMany(() => TaskComment, (comment) => comment.task)
+  @OneToMany(() => TaskComment, (comment) => comment.task, {
+    cascade: [Cascade.ALL],
+    orphanRemoval: true,
+  })
   comments = new Collection<TaskComment>(this);
 }

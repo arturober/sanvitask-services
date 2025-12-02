@@ -50,6 +50,8 @@ export class ImageService {
         }
         resolve();
       });
+    }).catch((err) => {
+      console.log(err);
     });
   }
 }
