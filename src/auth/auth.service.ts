@@ -97,13 +97,11 @@ export class AuthService {
   }
 
   async loginFacebook(tokenDto: LoginTokenDto): Promise<TokenResponse> {
-    const params = new URLSearchParams({
-      access_token: tokenDto.token,
-      fields: 'id,name,email',
-    });
-
     const resp = await axios.get('https://graph.facebook.com/me', {
-      params: params.toString(),
+      params: {
+        access_token: tokenDto.token,
+        fields: 'id,name,email',
+      },
     });
 
     const respUser = resp.data as { id: string; name: string; email: string };

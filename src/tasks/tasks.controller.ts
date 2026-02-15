@@ -57,9 +57,10 @@ export class TasksController {
     @Param('id') id: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
     updateTaskDto: UpdateTaskDto,
+    @AuthUser() authUser: User,
   ) {
     return {
-      task: await this.tasksService.update(+id, updateTaskDto),
+      task: await this.tasksService.update(authUser, +id, updateTaskDto),
     };
   }
 

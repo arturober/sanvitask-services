@@ -81,8 +81,16 @@ export class TasksService {
     return newTask;
   }
 
-  async update(id: number, updateTaskDto: UpdateTaskDto) {
-    const task = await this.taskRepository.findOneOrFail(id);
+  async update(authUser: User, id: number, updateTaskDto: UpdateTaskDto) {
+    const task = await this.taskRepository.findOneOrFail({
+      id,
+      participants: authUser.id,
+    });
+
+    if (!task) {
+      throw new Error('You are not a participant of this task');
+    }
+
     this.taskRepository.getEntityManager().assign(task, updateTaskDto);
 
     if (updateTaskDto.filepath) {
@@ -180,11 +188,18 @@ export class TasksService {
     taskId: number,
     addSubtaskDto: AddSubtaskDto,
   ): Promise<Subtask> {
+    const task = await this.taskRepository.findOneOrFail({
+      id: taskId,
+      participants: authUser.id,
+    });
+
+    if (!task) {
+      throw new Error('You are not a participant of this task');
+    }
     const newSubtask = this.subtaskRepository.create({
       description: addSubtaskDto.description,
-      task: this.taskRepository.getReference(taskId),
+      task: task,
     });
-    console.log(newSubtask);
     await this.subtaskRepository.getEntityManager().persistAndFlush(newSubtask);
     return newSubtask;
   }
